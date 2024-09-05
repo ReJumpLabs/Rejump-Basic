@@ -5,28 +5,35 @@ from config import model_file_path, TOKEN, TIMEFRAME, TRAINING_DAYS, REGION, DAT
 
 
 app = Flask(__name__)
-
+SUPPORTED_TOKENS = ["ETH", "SOL", "BTC", "BNB", "ARB"]
 
 def update_data():
-    """Download price data, format data and train model."""
-    files = download_data(TOKEN, TRAINING_DAYS, REGION, DATA_PROVIDER)
-    format_data(files, DATA_PROVIDER)
-    train_model(TIMEFRAME)
-
+    """Download price data, format data and train model for all supported tokens."""
+    
+    for token in SUPPORTED_TOKENS:
+        print(f"Updating data for {token}...")
+        try:
+            files = download_data(token, TRAINING_DAYS, REGION, DATA_PROVIDER)
+            format_data(files, DATA_PROVIDER)
+            train_model(TIMEFRAME)
+            print(f"Data update and model training completed for {token}")
+        except Exception as e:
+            print(f"Error updating data for {token}: {str(e)}")
 
 @app.route("/inference/<string:token>")
 def generate_inference(token):
     """Generate inference for given token."""
-    if not token or token.upper() != TOKEN:
+    token = token.upper()
+
+    if token not in SUPPORTED_TOKENS:
         error_msg = "Token is required" if not token else "Token not supported"
         return Response(json.dumps({"error": error_msg}), status=400, mimetype='application/json')
 
     try:
-        inference = get_inference(token.upper(), TIMEFRAME, REGION, DATA_PROVIDER)
+        inference = get_inference(token, TIMEFRAME, REGION, DATA_PROVIDER)
         return Response(str(inference), status=200)
     except Exception as e:
         return Response(json.dumps({"error": str(e)}), status=500, mimetype='application/json')
-
 
 @app.route("/update")
 def update():
